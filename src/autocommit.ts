@@ -4,8 +4,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 
-async function getCommitMessage(summary : string ) : Promise<string>{
+async function getCommitMessage(summary : string, apiKey : string ) : Promise<string>{
 
+    const OPENAI_API_KEY = apiKey;
+    
     try{ 
         const response = await axios.post(
             'https://api.openai.com/v1/chat/completions',
@@ -13,13 +15,13 @@ async function getCommitMessage(summary : string ) : Promise<string>{
                 model: 'gpt-3.5-turbo',
                 messages: [
                     { role: 'system', content: 'You are a helpful assistant.' },
-                    { role: 'user', content: `Generate a concise commit message based on this summary of code changes:\n\n${summary}` },
+                    { role: 'user', content: `Generate a concise commit message based on this summary of code changes. The commit message should be less than 11 words:\n\n${summary}` },
                 ],
                 max_tokens: 20,
             },
             {
                 headers: {
-                    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+                    Authorization: `Bearer ${OPENAI_API_KEY}`,
                     'Content-Type': 'application/json',
                 },
             }  
@@ -33,7 +35,7 @@ async function getCommitMessage(summary : string ) : Promise<string>{
 
 }
 
-function  generateReadme(summary :string) : string {
+function generateReadme(summary :string) : string {
     return `
     # Code Changes Summary
     
@@ -47,7 +49,7 @@ function  generateReadme(summary :string) : string {
         `;
     }
 
-async function commitToRepo(repoPath : string, readmeContent : string , commitMessage : string){
+async function commitToRepo(repoPath : string, readmeContent : string , commitMessage : string): Promise<void> {
 
     const gitClient = simpleGit(repoPath);
 
@@ -57,11 +59,11 @@ async function commitToRepo(repoPath : string, readmeContent : string , commitMe
         await fs.promises.writeFile(readmePath, readmeContent, 'utf-8');
         await gitClient.add(readmePath);
         await gitClient.commit(commitMessage);
-        await gitClient.push('origin', 'main');
+        //await gitClient.push('origin', 'main');
 
     } catch (error){
         console.error('Error while committing to repo:', error);
     }
 }
 
-export default { getCommitMessage, generateReadme, commitToRepo };
+export { getCommitMessage, generateReadme, commitToRepo}

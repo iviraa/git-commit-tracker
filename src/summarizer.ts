@@ -1,14 +1,8 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
 
-dotenv.config();
+async function getSummary(diff: string, apiKey: string): Promise<string> {
 
-async function getSummary(diff: string): Promise<string> {
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) {
-        console.error('API key is missing.');
-        return 'Error: API key is missing.';
-    }
+    const OPENAI_API_KEY = apiKey;
 
     try {
         const response = await axios.post(

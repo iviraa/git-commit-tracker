@@ -1,40 +1,92 @@
 import * as vscode from 'vscode';
-import simpleGit, { SimpleGit } from 'simple-git';
 import getSummary from './summarizer';
+import getCodeChanges  from './changes';
+import { getCommitMessage, generateReadme, commitToRepo } from './autocommit';
 
-export function activate(context: vscode.ExtensionContext) {
 
-	console.log('Congratulations, your extension "git-commit-tracker" is now active!');
+// export function activate(context: vscode.ExtensionContext) {
 
-	const disposable = vscode.commands.registerCommand('git-commit-tracker.summarizeChanges', async () => {
+// 	console.log('Extension "git-commit-tracker" is now active!');
+
+//     const commitInterval = setInterval(async () => {
+        
+//         const codeChanges = await getCodeChanges();
+
+//         const summary = await getSummary(codeChanges);
+
+//         const readmeContent = generateReadme(summary);
+
+//         const commitMessage = await getCommitMessage(summary);
+
+//         const repoPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
+
+//         await commitToRepo(repoPath, readmeContent, commitMessage);
+
+//     }, 1000 );
+
 	
-		const workspaceFolders = vscode.workspace.workspaceFolders;
+// 	context.subscriptions.push({
+//         dispose: () => {
+//             clearInterval(commitInterval);
+//         }
+//     });
+// }
 
-        if (!workspaceFolders || workspaceFolders.length === 0) {
-            vscode.window.showErrorMessage('No workspace folder found.');
-            return;
+// export function deactivate() {
+//     console.log('Extension "git-commit-tracker" is now inactive!');
+// }
+
+export async function activate(context: vscode.ExtensionContext) {
+    console.log('Extension "git-commit-tracker" is now active!');
+
+    const secretStorage = context.secrets;
+
+
+    let apiKey = await secretStorage.get('openaiApiKey');
+
+    if (!apiKey) {
+       
+        apiKey = await vscode.window.showInputBox({
+            prompt: 'Enter your OpenAI API Key',
+            placeHolder: 'sk-xxxxxxxxxxxxxxxxxxxx',
+            ignoreFocusOut: true,  
+        });
+
+        if (apiKey) {
+            // Store the API key securely
+            await secretStorage.store('openaiApiKey', apiKey);
+            vscode.window.showInformationMessage('API Key saved successfully!');
+        } else {
+            vscode.window.showErrorMessage('API Key was not provided. Some features may not work.');
         }
+    } else {
+        vscode.window.showInformationMessage('API Key loaded securely.');
+    }
 
-		const workspacePath = workspaceFolders[0].uri.fsPath;
-        const git: SimpleGit = simpleGit(workspacePath);
 
-        try {
-            const diff = await git.diff();
+    const summarizeChangesCommand = vscode.commands.registerCommand(
+        'git-commit-tracker.summarizeChanges', async () => {
+            // This will trigger when the user runs the "Summarize Changes" command
+            const codeChanges = await getCodeChanges();
+            const summary = await getSummary(codeChanges, apiKey);
+            const readmeContent = generateReadme(summary);
+            const commitMessage = await getCommitMessage(summary, apiKey);
+            const repoPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
 
-            if (!diff) {
-                vscode.window.showInformationMessage('No changes found since the last commit.');
-                return;
-            }
+            console.log('Code Changes:', codeChanges);
+            console.log('Summary:', summary);
+            console.log('Readme Content:', readmeContent);
+            console.log('Commit Message:', commitMessage);
+            console.log(repoPath);
 
-            const summary = await getSummary(diff);
-
-            vscode.window.showInformationMessage(`Code Changes Summary: ${summary}`);
-        } catch (error : any) {
-            vscode.window.showErrorMessage(`Error reading Git changes: ${error.message}`);
+            await commitToRepo(repoPath, readmeContent, commitMessage);
+            vscode.window.showInformationMessage('Changes summarized and committed!');
         }
-    
-	});
-	context.subscriptions.push(disposable);
+    );
+
+    context.subscriptions.push(summarizeChangesCommand);
 }
 
-export function deactivate() {}
+export function deactivate() {
+    console.log('Extension "git-commit-tracker" is now inactive!');
+}
