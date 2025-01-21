@@ -1,8 +1,17 @@
 import axios from 'axios';
 
-async function getSummary(diff: string, apiKey: string): Promise<string> {
+async function getSummary(diff: string, apiKey: string | undefined ): Promise<string> {
 
     const OPENAI_API_KEY = apiKey;
+
+    if (!OPENAI_API_KEY) {
+        console.error('OpenAI API key is not provided.');
+    }
+
+    if (!diff) {
+        console.error('No code changes found.');
+        return 'No code changes found.';
+    }
 
     try {
         const response = await axios.post(

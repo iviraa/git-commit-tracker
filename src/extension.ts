@@ -68,10 +68,11 @@ export async function activate(context: vscode.ExtensionContext) {
         'git-commit-tracker.summarizeChanges', async () => {
             // This will trigger when the user runs the "Summarize Changes" command
             const codeChanges = await getCodeChanges();
-            const summary = await getSummary(codeChanges, apiKey);
-            const readmeContent = generateReadme(summary);
+            const summary = await getSummary(codeChanges, apiKey);  
             const commitMessage = await getCommitMessage(summary, apiKey);
             const repoPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
+
+            const readmeContent = await generateReadme( repoPath, summary);
 
             console.log('Code Changes:', codeChanges);
             console.log('Summary:', summary);

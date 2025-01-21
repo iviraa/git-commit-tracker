@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import simpleGit, { SimpleGit } from "simple-git";
+import crypto from 'crypto';
+
+let previousHash: string | null = null;
 
 async function getCodeChanges(): Promise<string> {
 
@@ -17,13 +20,25 @@ async function getCodeChanges(): Promise<string> {
     try {
         const codeChanges = await git.diff();
 
+        const currentHash = crypto.createHash('sha256').update(codeChanges).digest('hex');
+        console.log('Code Changes Hash:', currentHash);
+        console.log('Previous Hash:', previousHash);
+
+        if (previousHash === currentHash) {
+            console.log('No changes found since last progress.');
+            return "";
+        }else{
+            previousHash = currentHash;
+        }
+
         if (!codeChanges) {
             console.log('No changes found since the last commit.');
-            return 'No changes found.';
+            return "";
         }
 
         console.log('Code Changes:', codeChanges);
         return codeChanges;
+
     } catch (error) {
         console.error('Error reading Git changes:', error);
         return 'Error retrieving code changes.';

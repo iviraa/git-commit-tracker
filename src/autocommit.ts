@@ -4,10 +4,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 
-async function getCommitMessage(summary : string, apiKey : string ) : Promise<string>{
+async function getCommitMessage(summary : string, apiKey : string | undefined) : Promise<string>{
 
     const OPENAI_API_KEY = apiKey;
-    
+
+    if (!OPENAI_API_KEY) {
+        console.error('OpenAI API key is not provided.');
+    }
+
     try{ 
         const response = await axios.post(
             'https://api.openai.com/v1/chat/completions',
@@ -35,19 +39,30 @@ async function getCommitMessage(summary : string, apiKey : string ) : Promise<st
 
 }
 
-function generateReadme(summary :string) : string {
-    return `
-    # Code Changes Summary
-    
-    This repository contains the latest code changes made to the project.
-    
-    ## Summary of Code Changes:
-    
-    \`\`\`
-    ${summary}
-    \`\`\`
-        `;
+async function generateReadme(repoPath : string, summary :string) : Promise<string> {
+
+    const readmePath = path.join(repoPath, 'README.md');
+
+    let currentContent = '';
+    let bulletNumber = 0;
+
+    if (fs.existsSync(readmePath)) {
+        currentContent = await fs.promises.readFile(readmePath, 'utf-8');
+
+        const currentNumber = currentContent.match(/^\d+\.\s+/gm);
+        if (currentNumber) {
+            bulletNumber = currentNumber.length;
+        } 
+    } else {
+        currentContent = '# Code Changes Summary\n\n';
     }
+    const newEntry = `\n\n${bulletNumber + 1}. ${summary.replace(/\n/g, '\n    ')}`;
+    const updatedContent = currentContent + newEntry;
+
+    return updatedContent;
+}
+
+    
 
 async function commitToRepo(repoPath : string, readmeContent : string , commitMessage : string): Promise<void> {
 
